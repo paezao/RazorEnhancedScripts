@@ -1,0 +1,24 @@
+packages/
+Crypt/Debug/
+Crypt/Release/
+Debug/
+FastColoredTextBox/bin/
+FastColoredTextBox/obj/
+Loader/Debug/
+Loader/Release/
+Razor/obj/
+Razor/bin/
+Release/
+UltimaSDK/bin/
+UltimaSDK/obj/
+/.vs/
+
+*~
+
+*.htm
+
+
+
+# JetBrains Rider
+.idea/
+*.sln.iml
