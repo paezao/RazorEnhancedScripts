@@ -39,8 +39,14 @@
         <Reference Include="System.Xml"/>
     </ItemGroup>
     <ItemGroup>
-        <Compile Include="OneButtonSampire.cs" />
+        <Compile Include="ExtremeButcher.cs" />
+        <Compile Include="ExtremeSampireToggleMode.cs" />
+        <Compile Include="ExtremeSlayers.cs" />
+        <Compile Include="ExtremeTreasureHunting.cs" />
+        <Compile Include="ExtremeSampire.cs" />
         <Compile Include="Properties\AssemblyInfo.cs"/>
+        <Compile Include="RuneGump.cs" />
+        <Compile Include="TreasureMapChestOrganizer.cs" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\RazorEnhanced\Razor\Razor.csproj" />
