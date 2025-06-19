@@ -3,22 +3,20 @@
  * Extreme Treasure Hunting
  * ================================================
  *
- * Version: 0.0.1
- * Last Updated: 2025-06-14
+ * Version: 1.0.0
+ * Last Updated: 2025-06-19
  * Author: nkr
  *
  * ------------------------------------------------
  * Overview:
- * This Razor Enhanced script provides a full-featured control panel (Gump)
- * to manage your entire treasure hunting workflow in UO Alive.
- * It automates and assists with locating the treasure, digging it up,
+ * This script automates and assists with locating the treasure, digging it up,
  * unlocking the chest, disarming traps, looting (via LootMaster), and post-cleanup.
  *
  * One of the core features is automatic highlighting of the runebook
  * that contains the rune closest to the TMap location you're working on.
  * This makes navigation smooth and quick.
  *
- * The system supports:
+ * The script supports:
  *  - Main public runebook sets from UOAlive
  *  - Your own custom runebook set
  *
@@ -26,7 +24,6 @@
  * Features:
  * ✔️ Gump to control all treasure hunting steps
  * ✔️ Runebook highlighter based on TMap coordinates
- * ✔️ Facet-aware runebook indexing
  * ✔️ Supports both public and private/custom runebook sets
  *
  * ------------------------------------------------
@@ -36,7 +33,7 @@
  * ------------------------------------------------
  * Changelog:
  *
- * [0.0.1] - 2025-06-14
+ * [1.0.0] - 2025-06-19
  *   - Initial release
  *
  * ================================================
@@ -54,8 +51,10 @@ namespace RazorEnhancedScripts.Scripts
     {
         /* ------------------------------------------------
          * Configuration:
-         *  Select your preferred Runebook set system (SEA, Leoncio or Custom): */
-        const RunebookSetSystem PreferredRunebookSetSystem = RunebookSetSystem.Leoncio;
+         *  Enable Looting button (requires LootMaster): */
+        const bool LootmasterLooting = false;
+        /*  Select your preferred Runebook set system (SEA, Leoncio or Custom): */
+        const RunebookSetSystem PreferredRunebookSetSystem = RunebookSetSystem.SEA;
         /*  If you selected custom, then set up your custom system: */
         private RunebookSet CustomRunebookSet = new RunebookSet()
         {
@@ -65,9 +64,9 @@ namespace RazorEnhancedScripts.Scripts
                 //new Runebook(0x40802837, 100, 1500, 700, 800),
             },
             
-            Felluca = new List<Runebook>()
+            Felucca = new List<Runebook>()
             {
-                // Add your Felluca runebooks and then lower and upper X and Y coordinates
+                // Add your Felucca runebooks and then lower and upper X and Y coordinates
                 //new Runebook(0x40802837, 100, 1500, 700, 800),
             },
             
@@ -131,17 +130,15 @@ namespace RazorEnhancedScripts.Scripts
         private struct RunebookSet
         {
             public List<Runebook> Trammel;
-            public List<Runebook> Felluca;
+            public List<Runebook> Felucca;
             public List<Runebook> Malas;
             public List<Runebook> Ilshenar;
             public List<Runebook> Tokuno;
             public List<Runebook> TerMur;
         };
 
-        // TODO:
-        // "You must have a digging tool to dig for treasure."
         private static readonly string[] FacetNames =
-            { "Felluca", "Trammel", "Ilshenar", "Malas", "Tokuno", "Ter Mur" };
+            { "Felucca", "Trammel", "Ilshenar", "Malas", "Tokuno", "Ter Mur" };
 
         private const int GumpId = 54321542;
         private const int GumpWidth = 300;
@@ -184,6 +181,7 @@ namespace RazorEnhancedScripts.Scripts
             Dig,
             Open,
             CleanUp,
+            Loot,
             Cancel,
         };
 
@@ -271,6 +269,8 @@ namespace RazorEnhancedScripts.Scripts
                             }
                             var level = targetItem.Name.Split(' ').Last();
                             var facet = mapProps[3].ToString().Split(' ').Last();
+                            if (facet == "Mur") facet = "Ter Mur";
+                            else if (facet == "Islands") facet = "Tokuno";
 
                             var locationMatch = Regex.Match(mapProps[4].ToString(), @"Location: \((\d+), (\d+)\)");
                             var coordsX = int.Parse(locationMatch.Groups[1].Value);
@@ -297,6 +297,12 @@ namespace RazorEnhancedScripts.Scripts
                         case (int)Buttons.CleanUp:
                         {
                             CleanChest();
+                            UpdateGump();
+                        } break;
+                        
+                        case (int)Buttons.Loot:
+                        {
+                            LootChest();
                             UpdateGump();
                         } break;
                         
@@ -345,12 +351,13 @@ namespace RazorEnhancedScripts.Scripts
             if (FacetNames[Player.Map] == _selectedTreasureMapProperties?.Facet)
             {
                 SetupMapAndTracking();
+                CheckDigLocationDistance();
             }
         }
         
         private void HandleStateDigging()
         {
-            _treasureChestItem = Items.FindByID(TreasureChestItemIds.ToList(), -1, -1, 2);
+            _treasureChestItem = Items.FindByID(TreasureChestItemIds.ToList(), -1, -1, 4);
             if (_treasureChestItem == null || Player.Paralized) return;
             
             Player.HeadMessage(MessageColorSuccess, "Chest dug!!");
@@ -407,8 +414,8 @@ namespace RazorEnhancedScripts.Scripts
         {
             switch (facet)
             {
-                case "Felluca":
-                    return _runebookSet.Felluca;
+                case "Felucca":
+                    return _runebookSet.Felucca;
                 case "Trammel":
                     return _runebookSet.Trammel;
                 case "Ilshenar":
@@ -455,6 +462,37 @@ namespace RazorEnhancedScripts.Scripts
             _mapSetup = true;
         }
 
+        private void CheckDigLocationDistance()
+        {
+            var digCoordsX = _selectedTreasureMapProperties.Value.X;
+            var digCoordsY = _selectedTreasureMapProperties.Value.Y;
+            
+            var playerCoordsX = Player.Position.X;
+            var playerCoordsY = Player.Position.Y;
+            
+            var tileDistance = Math.Max(Math.Abs(playerCoordsX - digCoordsX), Math.Abs(playerCoordsY - digCoordsY));
+            var maxDigDistance = 1;
+
+            var playerCartographySkill = Player.GetSkillValue("Cartography");
+            if (playerCartographySkill >= 100)
+            {
+                maxDigDistance = 4;
+            }
+            else if (playerCartographySkill >= 81)
+            {
+                maxDigDistance = 3;
+            }
+            else if (playerCartographySkill >= 51)
+            {
+                maxDigDistance = 2;
+            }
+
+            if (tileDistance <= maxDigDistance)
+            {
+                Player.HeadMessage(MessageColorSuccess, "Hey, you're close enough to dig!");
+            }
+        }
+
         private void ClearSelectedTreasure()
         {
             _state = State.Idle;
@@ -470,7 +508,13 @@ namespace RazorEnhancedScripts.Scripts
         {
             if (Misc.UseContextMenu(_selectedTreasureMapSerial, "Dig For Treasure", 1000))
             {
+                var coordsX = _selectedTreasureMapProperties.Value.X;
+                var coordsY = _selectedTreasureMapProperties.Value.Y;
+                var mapTileHeight = Statics.GetLandZ(coordsX, coordsY, Player.Map);
+                
                 Target.WaitForTarget(1000);
+                Target.TargetExecute(_selectedTreasureMapProperties.Value.X,
+                    _selectedTreasureMapProperties.Value.Y, mapTileHeight);
                 Target.Self();
                 _state = State.Digging;
             }
@@ -480,6 +524,11 @@ namespace RazorEnhancedScripts.Scripts
         {
             _journal.Clear();
             _state = State.PickingChest;
+        }
+        
+        private void LootChest()
+        {
+            Misc.SetSharedValue("Lootmaster:DirectContainer", _treasureChestItem.Serial);
         }
         
         private void CleanChest()
@@ -574,8 +623,17 @@ namespace RazorEnhancedScripts.Scripts
                     Gumps.AddLabel(ref gump, cursorX + 16, cursorY + 2, HuntButtonLabelColor, "Open!");
                     break;
                 case State.Opened:
+#pragma warning disable CS0162
+                    if (LootmasterLooting)
+                    {
+                        Gumps.AddButton(ref gump, cursorX, cursorY, HuntButton, HuntButton, (int)Buttons.Loot, 1, 0);
+                        Gumps.AddLabel(ref gump, cursorX + 12, cursorY + 2, HuntButtonLabelColor, "Loot!");
+                        cursorX += 70;
+                    }
+#pragma warning restore CS0162
                     Gumps.AddButton(ref gump, cursorX, cursorY, HuntButton, HuntButton, (int)Buttons.CleanUp, 1, 0);
                     Gumps.AddLabel(ref gump, cursorX + 5, cursorY + 2, HuntButtonLabelColor, "Clean Up!");
+                    cursorX = leftPadding;
                     break;
             }
 
@@ -614,7 +672,7 @@ namespace RazorEnhancedScripts.Scripts
                 new Runebook(0x40802702, 4600, 1300, 4800, 3800),
             },
             
-            Felluca = new List<Runebook>()
+            Felucca = new List<Runebook>()
             {
                 new Runebook(0x4082A561, 100, 1500, 700, 800),
                 new Runebook(0x4082A601, 700, 1900, 1000, 800),
@@ -683,7 +741,7 @@ namespace RazorEnhancedScripts.Scripts
                 new Runebook(0x40D6B466, 4400, 1100, 4800, 3800),
             },
             
-            Felluca = new List<Runebook>()
+            Felucca = new List<Runebook>()
             {
                 new Runebook(0x409393B8, 225, 750, 800, 1100),
                 new Runebook(0x40939A48, 800, 1200, 1000, 1600),

@@ -39,7 +39,9 @@
         <Reference Include="System.Xml"/>
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="ExtremeBODCollecting.cs" />
         <Compile Include="ExtremeButcher.cs" />
+        <Compile Include="ExtremeCraftingTrainer.cs" />
         <Compile Include="ExtremeSampireToggleMode.cs" />
         <Compile Include="ExtremeSlayers.cs" />
         <Compile Include="ExtremeTreasureHunting.cs" />
