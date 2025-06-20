@@ -3,8 +3,8 @@
  * Extreme Treasure Hunting
  * ================================================
  *
- * Version: 1.0.0
- * Last Updated: 2025-06-19
+ * Version: 1.0.1
+ * Last Updated: 2025-06-20
  * Author: nkr
  *
  * ------------------------------------------------
@@ -33,6 +33,8 @@
  * ------------------------------------------------
  * Changelog:
  *
+ * [1.0.1] - 2025-06-20
+ *   - Added missing treasure chest item ID
  * [1.0.0] - 2025-06-19
  *   - Initial release
  *
@@ -145,7 +147,7 @@ namespace RazorEnhancedScripts.Scripts
 
         private const int TreasureMapItemId = 0x14EC;
         private static readonly int[] TreasureChestItemIds = {
-            0xA308, 0xA304,
+            0xA308, 0xA304, 0xA306,
         };
         private const int LockpickItemId = 0x14FC;
         private const uint RemoveChestGumpId = 0xa9ab7c92;
@@ -555,7 +557,7 @@ namespace RazorEnhancedScripts.Scripts
             
             // Header
             Gumps.AddBackground(ref gump, 0, 0, GumpWidth, 40, GumpBackground);
-            Gumps.AddLabel(ref gump, cursorX, cursorY, 0x90, "Extreme Treasure Hunting v0.1");
+            Gumps.AddLabel(ref gump, cursorX, cursorY, 0x90, "Extreme Treasure Hunting v1.0.1");
             cursorY += 23;
             
             // Status
