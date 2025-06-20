@@ -11,22 +11,45 @@ namespace RazorEnhancedScripts.Scripts
         private Item _runebook = null;
         private Item _tailoringBodBook = null;
         private Item _blacksmithBodBook = null;
+        private Journal _journal = new Journal();
 
         private const int RunebookId = 0x22C5;
         private const int BodBookId = 0x2259;
+        private const int BodId = 0x2258;
+        private const int TailoringBodColor = 0x0483;
+        private const int BlacksmithingBodColor = 0x044e;
         private const int RunebookGumpId = 0x59;
         private const int MessageColorInfo = 0x90;
         private const int MessageColorSuccess = 0x3C;
         private const int MessageColorError = 0x21;
+
+        private enum BodType
+        {
+            Tailoring = 0,
+            Blacksmithing,
+        };
         
         public void Run()
         {
             if (!FindRunebook()) return;
             if (!FindBodBooks()) return;
 
-            if (!RecallToTailor()) return;
+            if (Player.GetSkillValue("Tailoring") >= 100)
+            {
+                if (!RecallToTailor()) return;
+                CollectBods(BodType.Tailoring);
+            }
+            
+            if (Player.GetSkillValue("Blacksmithing") >= 100)
+            {
+                if (!RecallToBlacksmith()) return;
+                CollectBods(BodType.Blacksmithing);
+            }
+            
+            StoreBods();
 
-            CollectTailorBods();
+            Misc.Pause(2000);
+            RecallHome();
         }
 
         private bool FindRunebook()
@@ -60,10 +83,10 @@ namespace RazorEnhancedScripts.Scripts
             return null;
         }
 
-        private bool RecallHome()
+        private void RecallHome()
         {
             Player.HeadMessage(MessageColorInfo, "Recalling home...");
-            return RecallToRune(_runebook, 1);
+            RecallToRune(_runebook, 1);
         }
 
         private bool RecallToTailor()
@@ -87,13 +110,75 @@ namespace RazorEnhancedScripts.Scripts
             return true;
         }
 
-        private bool CollectTailorBods()
+        private void CollectBods(BodType bodType)
         {
+            var npcSuffix = "";
+            
+            switch (bodType)
+            {
+                case BodType.Tailoring:
+                    npcSuffix = "tailor";
+                    break;
+                case BodType.Blacksmithing:
+                    npcSuffix = "blacksmith";
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(bodType), bodType, null);
+            }
+
+            var mobileFilter = new Mobiles.Filter();
+            mobileFilter.Enabled = true;
+            mobileFilter.RangeMax = 8;
+            mobileFilter.CheckLineOfSight = true;
+            var mobiles = Mobiles.ApplyFilter(mobileFilter);
+
+            foreach (var mobile in mobiles)
+            {
+                _journal.Clear();
+                
+                if (!Mobiles.GetPropStringByIndex(mobile, 0).EndsWith(npcSuffix)) continue;
+                for (var i = 0; i < 3; i++)
+                {
+                    Misc.UseContextMenu(mobile.Serial, "Bulk Order Info", 1000);
+                    Misc.Pause(500);
+
+                    if (_journal.SearchByType("An offer may be available in about", "Regular"))
+                    {
+                        Player.HeadMessage(MessageColorInfo, "No Bods available at this time.");
+                        return;
+                    }
+
+                    var gump = Gumps.CurrentGump();
+                    Gumps.SendAction(Gumps.CurrentGump(), 1);
+                    
+                    Misc.Pause(500);
+                }
+            }
+            
+            Player.HeadMessage(MessageColorSuccess, "Bods collected!");
         }
 
-        private bool CollectBods()
+        private void StoreBods()
         {
-            
+            var bods = Player.Backpack.Contains.Where(i => i.ItemID == BodId).ToList();
+            foreach (var bod in bods)
+            {
+                Item destinationBodBook = null;
+                
+                if (bod.Color == TailoringBodColor)
+                {
+                    destinationBodBook = _tailoringBodBook;
+                }
+                else if (bod.Color == BlacksmithingBodColor)
+                {
+                    destinationBodBook = _blacksmithBodBook;
+                }
+
+                if (destinationBodBook == null) continue;
+                
+                Items.Move(bod, destinationBodBook, -1);
+                Misc.Pause(300);
+            }
         }
     }
 }
