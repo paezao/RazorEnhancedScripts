@@ -40,8 +40,14 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="ExtremeBODCollecting.cs" />
+        <Compile Include="ExtremeBODFilling.cs" />
         <Compile Include="ExtremeButcher.cs" />
         <Compile Include="ExtremeCraftingTrainer.cs" />
+        <Compile Include="ExtremeDungeonChests.cs" />
+        <Compile Include="ExtremeReactions.cs" />
+        <Compile Include="ExtremeSampireStanceConfidence.cs" />
+        <Compile Include="ExtremeSampireStanceCounterAttack.cs" />
+        <Compile Include="ExtremeSampireStanceEvasion.cs" />
         <Compile Include="ExtremeSampireToggleMode.cs" />
         <Compile Include="ExtremeSlayers.cs" />
         <Compile Include="ExtremeTreasureHunting.cs" />

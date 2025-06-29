@@ -10,14 +10,14 @@ namespace RazorEnhancedScripts.Scripts
     {
         public void Run()
         {
-            var val = Misc.ReadSharedValue("ExtremeSampire:Targets");
+            var val = Misc.ReadSharedValue("ExtremeSampire:Mode");
             var stance = (val is string) ? !string.IsNullOrEmpty(val.ToString()) ? val.ToString() : "Single" : "Single";
             if (string.IsNullOrEmpty(stance))
             {
                 stance = "Single";
             }
 
-            Misc.SetSharedValue("ExtremeSampire:Targets", stance == "Single" ? "Multi" : "Single");
+            Misc.SetSharedValue("ExtremeSampire:Mode", stance == "Single" ? "Multi" : "Single");
         }
     }
 }
