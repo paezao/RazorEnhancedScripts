@@ -1,4 +1,32 @@
-﻿using System;
+﻿/*
+ * ================================================
+ * Extreme Dungeon Chests
+ * ================================================
+ *
+ * Version: 1.0.0
+ * Last Updated: 2025-07-03
+ * Author: nkr
+ *
+ * ------------------------------------------------
+ * Overview:
+ * This script automates and assists with opening dungeon chests in dungeons.
+ * No more clicking the lockpicks or running remove trap multiple times.
+ * Just get 1 tile from the chest and the script will do its job.
+ *
+ * ------------------------------------------------
+ * Features:
+ * ✔️ Gump that shows an updated status on what it's doing
+ * ✔️ Supports all kinds of dungeons chests and locked containers.
+ *
+ * ------------------------------------------------
+ * Changelog:
+ *
+ * [1.0.0] - 2025-07-03
+ *   - Initial release
+ *
+ * ================================================
+ */
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
