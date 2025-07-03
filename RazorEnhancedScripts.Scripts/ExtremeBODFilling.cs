@@ -9,13 +9,15 @@ namespace RazorEnhancedScripts.Scripts
     public class ExtremeBODFilling
     {
         private const int BodId = 0x2258;
-        private const uint BodGumpId = 0x7a6efab2;
+        //private const uint BodGumpId = 0x7a6efab2;
+        private const uint BodGumpId = 0x2267ab21;
         private const int BodGumpCombineContainerButtonId = 4;
         
         private const int TailoringBodColor = 0x0483;
         private const int BlacksmithingBodColor = 0x044e;
 
         private const int SewingKitId = 0x0F9D;
+        private const int SalvageBagId = 0x0E76;
         
         private const int MessageColorInfo = 0x90;
         private const int MessageColorSuccess = 0x3C;
@@ -24,8 +26,20 @@ namespace RazorEnhancedScripts.Scripts
         private readonly Target _target = new Target();
         private readonly Journal _journal = new Journal();
 
+        private Item _salvageBag = null;
+
         public void Run()
         {
+            Player.HeadMessage(MessageColorInfo, "Target your salvage bag!");
+            var salvageBagSerial = _target.PromptTarget("Target your salvage bag!");
+            _salvageBag = Items.FindBySerial(salvageBagSerial);
+            if (_salvageBag == null || _salvageBag.ItemID != SalvageBagId || _salvageBag.Name != "Salvage Bag")
+            {
+                Player.HeadMessage(MessageColorError, "Hey! This is not a Salvage Bag!");
+                return;
+            }
+            
+            Player.HeadMessage(MessageColorInfo, "Target the BOD you want to fill.");
             var itemSerial = _target.PromptTarget("Target the BOD you want to fill.");
             var item = Items.FindBySerial(itemSerial);
             
@@ -68,13 +82,23 @@ namespace RazorEnhancedScripts.Scripts
             var craftingGump = new CraftingGump(Gumps.CurrentGump());
             craftingGump.ScanGump();
 
+            var craftedOnce = false;
             var amountMade = currentAmount;
             while (amountMade < amount)
             {
                 Items.UseItemByID(SewingKitId);
                 Misc.Pause(200);
-                craftingGump.MakeItemByName(itemName);
-                Misc.Pause(1000);
+                if (!craftedOnce)
+                {
+                    craftingGump.MakeItemByName(itemName);
+                    craftedOnce = true;
+                }
+                else
+                {
+                    craftingGump.MakeLast();
+                }
+                
+                Misc.Pause(2000);
                 var createdItem = Items.FindByName(itemName, -1, Player.Backpack.Serial, -1);
                 if (createdItem == null)
                 {
@@ -86,12 +110,29 @@ namespace RazorEnhancedScripts.Scripts
 
                     continue;
                 }
-                
-                if ((mustBeExceptional && createdItem.Properties[2].ToString() == "Exceptional") || !mustBeExceptional)
+
+                var exceptionalProp = Items.GetPropStringByIndex(createdItem.Serial, 2);
+                if ((mustBeExceptional && exceptionalProp == "exceptional") || !mustBeExceptional)
                 {
-                    Player.HeadMessage(MessageColorSuccess, $"{amountMade} made, {amount - amountMade} to go!");
                     amountMade++;
+                    var amountToGo = amount - amountMade;
+                    if (amountToGo > 0)
+                    {
+                        Player.HeadMessage(MessageColorSuccess, $"{amountMade} made, {amountToGo} to go!");
+                    }
+                    else
+                    {
+                        Player.HeadMessage(MessageColorSuccess, $"{amountMade} made, DONE!");
+                    }
                 }
+                else
+                {
+                    Player.HeadMessage(MessageColorError, $"Oops! Not exceptional, still {amount - amountMade} to go!");
+                    Items.Move(createdItem, _salvageBag, 1);
+                    Misc.Pause(200);
+                }
+                
+                Misc.IgnoreObject(createdItem.Serial);
             }
             
             Items.UseItem(bod.Serial);

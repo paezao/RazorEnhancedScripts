@@ -3,8 +3,8 @@
  * Extreme Treasure Hunting
  * ================================================
  *
- * Version: 1.0.1
- * Last Updated: 2025-06-20
+ * Version: 1.0.2
+ * Last Updated: 2025-07-02
  * Author: nkr
  *
  * ------------------------------------------------
@@ -33,6 +33,9 @@
  * ------------------------------------------------
  * Changelog:
  *
+ * [1.0.2] - 2025-07-02
+ *   - Removed auto remove chest functionality, player now has to click the confirm button on the gump
+ *   - Automatically decodes maps
  * [1.0.1] - 2025-06-20
  *   - Added missing treasure chest item ID
  * [1.0.0] - 2025-06-19
@@ -51,6 +54,8 @@ namespace RazorEnhancedScripts.Scripts
 {
     public class ExtremeTreasureHunting
     {
+        private const string Version = "1.0.2";
+        
         /* ------------------------------------------------
          * Configuration:
          *  Enable Looting button (requires LootMaster): */
@@ -150,7 +155,6 @@ namespace RazorEnhancedScripts.Scripts
             0xA308, 0xA304, 0xA306,
         };
         private const int LockpickItemId = 0x14FC;
-        private const uint RemoveChestGumpId = 0xa9ab7c92;
         
         private const int GumpBackground = 1755;
         private const int StatusColorIdle = 0x67;
@@ -168,6 +172,7 @@ namespace RazorEnhancedScripts.Scripts
         private enum State
         {
             Idle = 0,
+            Decoding,
             Hunting,
             Digging,
             Dug,
@@ -265,23 +270,19 @@ namespace RazorEnhancedScripts.Scripts
                             var mapProps = targetItem.Properties;
                             if (mapProps.Count < 4)
                             {
-                                Player.HeadMessage(MessageColorError, "Hey! You need to decode this first!");
-                                ClearSelectedTreasure();
+                                if (Player.GetSkillValue("Cartography") >= 100)
+                                {
+                                    _state = State.Decoding;
+                                }
+                                else
+                                {
+                                    Player.HeadMessage(MessageColorError, "Hey! You need to decode this first!");
+                                    ClearSelectedTreasure();
+                                }
                                 break;
                             }
-                            var level = targetItem.Name.Split(' ').Last();
-                            var facet = mapProps[3].ToString().Split(' ').Last();
-                            if (facet == "Mur") facet = "Ter Mur";
-                            else if (facet == "Islands") facet = "Tokuno";
-
-                            var locationMatch = Regex.Match(mapProps[4].ToString(), @"Location: \((\d+), (\d+)\)");
-                            var coordsX = int.Parse(locationMatch.Groups[1].Value);
-                            var coordsY = int.Parse(locationMatch.Groups[2].Value);
                             
-                            _selectedTreasureMapProperties = new MapProperties(level, facet, coordsX, coordsY);
-
-                            _state = State.Hunting;
-                            UpdateGump();
+                            HuntDecodedMap();
                         } break;
                         
                         case (int)Buttons.Dig:
@@ -314,6 +315,11 @@ namespace RazorEnhancedScripts.Scripts
                             UpdateGump();
                         } break;
                     }
+                    
+                    if (_state == State.Decoding)
+                    {
+                        HandleStateDecoding();
+                    }
 
                     if (_state == State.Hunting)
                     {
@@ -344,6 +350,37 @@ namespace RazorEnhancedScripts.Scripts
                 {
                     Misc.SendMessage(ex.ToString());
                 }
+            }
+        }
+
+        private void HuntDecodedMap()
+        {
+            var item = Items.FindBySerial(_selectedTreasureMapSerial);
+            var mapProps = item.Properties;
+            
+            var level = item.Name.Split(' ').Last();
+            var facet = mapProps[3].ToString().Split(' ').Last();
+            if (facet == "Mur") facet = "Ter Mur";
+            else if (facet == "Islands") facet = "Tokuno";
+
+            var locationMatch = Regex.Match(mapProps[4].ToString(), @"Location: \((\d+), (\d+)\)");
+            var coordsX = int.Parse(locationMatch.Groups[1].Value);
+            var coordsY = int.Parse(locationMatch.Groups[2].Value);
+                            
+            _selectedTreasureMapProperties = new MapProperties(level, facet, coordsX, coordsY);
+            _state = State.Hunting;
+            UpdateGump();
+        }
+        
+        private void HandleStateDecoding()
+        {
+            UpdateGump();
+            _journal.Clear();
+            Misc.UseContextMenu(_selectedTreasureMapSerial, "Decode Map", 1000);
+            Misc.Pause(2000);
+            if (_journal.Search("You successfully decode a treasure map!"))
+            {
+                HuntDecodedMap();
             }
         }
 
@@ -442,9 +479,10 @@ namespace RazorEnhancedScripts.Scripts
 
             if (_mapRunebook == null) return;
 
-            Items.Message((int)_mapRunebook.Value.Serial, BookHighlightColor, "!! BOOK HERE !!");
-            Items.Message((int)_mapRunebook.Value.Serial, BookHighlightColor, "      ||       ");
-            Items.Message((int)_mapRunebook.Value.Serial, BookHighlightColor, "      \\/       ");
+            Items.SetColor((int)_mapRunebook.Value.Serial, -1);
+            Items.Message((int)_mapRunebook.Value.Serial, BookHighlightColor, "!!   BOOK HERE !!");
+            Items.Message((int)_mapRunebook.Value.Serial, BookHighlightColor, "        ||       ");
+            Items.Message((int)_mapRunebook.Value.Serial, BookHighlightColor, "        \\/       ");
         }
 
         private void SetupMapAndTracking()
@@ -537,8 +575,6 @@ namespace RazorEnhancedScripts.Scripts
         {
             Misc.UseContextMenu(_treasureChestItem.Serial, "Remove Chest", 1000);
             Misc.Pause(1000);
-            //Gumps.WaitForGump(RemoveChestGumpId, 1000);
-            Gumps.SendAction(RemoveChestGumpId, 1);
             ClearSelectedTreasure();
         }
 
@@ -557,7 +593,7 @@ namespace RazorEnhancedScripts.Scripts
             
             // Header
             Gumps.AddBackground(ref gump, 0, 0, GumpWidth, 40, GumpBackground);
-            Gumps.AddLabel(ref gump, cursorX, cursorY, 0x90, "Extreme Treasure Hunting v1.0.1");
+            Gumps.AddLabel(ref gump, cursorX, cursorY, 0x90, $"Extreme Treasure Hunting v{Version}");
             cursorY += 23;
             
             // Status
@@ -569,6 +605,12 @@ namespace RazorEnhancedScripts.Scripts
             {
                 case State.Idle:
                     break;
+                case State.Decoding:
+                {
+                    statusText = $"Status: Decoding map...";
+                    statusColor = StatusColorHunting;
+                    break;
+                }
                 case State.Hunting:
                 {
                     statusText = $"Status: Hunting {_selectedTreasureMapProperties?.Level} in {_selectedTreasureMapProperties?.Facet} ({_selectedTreasureMapProperties?.X},{_selectedTreasureMapProperties?.Y})";

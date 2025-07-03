@@ -52,6 +52,7 @@
         <Compile Include="ExtremeSlayers.cs" />
         <Compile Include="ExtremeTreasureHunting.cs" />
         <Compile Include="ExtremeSampire.cs" />
+        <Compile Include="FishingTraining.cs" />
         <Compile Include="Properties\AssemblyInfo.cs"/>
         <Compile Include="RuneGump.cs" />
         <Compile Include="TreasureMapChestOrganizer.cs" />
