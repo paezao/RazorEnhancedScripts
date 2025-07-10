@@ -31,6 +31,8 @@ namespace RazorEnhancedScripts.Scripts
         private const string SpellNameBushidoCounterAttack = "Counter Attack";
         private const string SpellNameChivalryConsecrateWeapon = "Consecrate Weapon";
         private const string SpellNameChivalryEnemyOfOne = "Enemy Of One";
+        
+        private const int RadiantScimitarItemId = 0x2D33;
 
         private const int SpellManaChivalryConsecrateWeapon = 10;
         private const int SpellManaChivalryEnemyOfOne = 20;
@@ -72,7 +74,7 @@ namespace RazorEnhancedScripts.Scripts
                     if (Player.WarMode)
                     {
                         MaintainStance();
-                        MaintainConsecrateWeapon();
+                        if (IsPlayerPaladin()) MaintainConsecrateWeapon();
 
                         if (_currentMode == Mode.Multi)
                         {
@@ -81,7 +83,7 @@ namespace RazorEnhancedScripts.Scripts
                         }
                         else
                         {
-                            MaintainEnemyOfOne();
+                            if (IsPlayerPaladin()) MaintainEnemyOfOne();
                             ExecuteSingleTargetRotation();
                         }
                     }
@@ -95,6 +97,64 @@ namespace RazorEnhancedScripts.Scripts
                 {
                     Misc.SendMessage(e.ToString());
                 }
+            }
+        }
+
+        private bool IsPlayerPaladin()
+        {
+            return Player.GetSkillValue("Chivalry") >= 60;
+        }
+
+        private int GetSingleTargetIcon()
+        {
+            var currentWeapon = Player.GetItemOnLayer("RightHand");
+            if (currentWeapon != null && currentWeapon.ItemID == RadiantScimitarItemId)
+            {
+                return (int)Player.SecondarySpecial;
+            }
+            else
+            {
+                return (int)Player.PrimarySpecial;
+            }
+        }
+        
+        private int GetMultiTargetIcon()
+        {
+            var currentWeapon = Player.GetItemOnLayer("RightHand");
+            if (currentWeapon != null && currentWeapon.ItemID == RadiantScimitarItemId)
+            {
+                return (int)Player.PrimarySpecial;
+            }
+            else
+            {
+                return (int)Player.SecondarySpecial;
+            }
+        }
+
+        private void ReadySingleTargetAbility()
+        {
+            var currentWeapon = Player.GetItemOnLayer("RightHand");
+            if (currentWeapon != null && currentWeapon.ItemID == RadiantScimitarItemId)
+            {
+                if (!Player.HasSpecial) Player.WeaponSecondarySA();
+            }
+            else
+            {
+                if (!Player.HasSpecial) Player.WeaponPrimarySA();
+            }
+        }
+        
+        private void ReadyMultiTargetAbility()
+        {
+            
+            var currentWeapon = Player.GetItemOnLayer("RightHand");
+            if (currentWeapon != null && currentWeapon.ItemID == RadiantScimitarItemId)
+            {
+                if (!Player.HasSpecial) Player.WeaponPrimarySA();
+            }
+            else
+            {
+                if (!Player.HasSpecial) Player.WeaponSecondarySA();
             }
         }
 
@@ -138,7 +198,7 @@ namespace RazorEnhancedScripts.Scripts
         {
             if (!Player.HasSpecial)
             {
-                Player.WeaponSecondarySA();
+                ReadyMultiTargetAbility();
             }
         }
         
@@ -161,7 +221,7 @@ namespace RazorEnhancedScripts.Scripts
 
             if (Player.HasSpecial) return;
             
-            Player.WeaponPrimarySA();
+            ReadySingleTargetAbility();
             Misc.Pause(100);
         }
 
@@ -227,12 +287,12 @@ namespace RazorEnhancedScripts.Scripts
 
             if (_currentMode != Mode.Multi)
             {
-                Gumps.AddButton(ref gump, 5,5, (int)Player.PrimarySpecial, (int)Player.PrimarySpecial,1,1,0);
+                Gumps.AddButton(ref gump, 5,5, GetSingleTargetIcon(), GetSingleTargetIcon(),1,1,0);
                 Gumps.AddTooltip(ref gump, "Single Target");
             }
             else
             {
-                Gumps.AddButton(ref gump, 5,5,(int)Player.SecondarySpecial,(int)Player.SecondarySpecial,2,1,0);
+                Gumps.AddButton(ref gump, 5,5,GetMultiTargetIcon(),GetMultiTargetIcon(),2,1,0);
                 Gumps.AddTooltip(ref gump, "Multi Target");
             }
 
