@@ -45,6 +45,7 @@
         <Compile Include="ExtremeCraftingTrainer.cs" />
         <Compile Include="ExtremeDungeonChests.cs" />
         <Compile Include="ExtremeReactions.cs" />
+        <Compile Include="ExtremeSampireAttackHonor.cs" />
         <Compile Include="ExtremeSampireStanceConfidence.cs" />
         <Compile Include="ExtremeSampireStanceCounterAttack.cs" />
         <Compile Include="ExtremeSampireStanceEvasion.cs" />

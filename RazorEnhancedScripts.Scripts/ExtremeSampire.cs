@@ -21,6 +21,19 @@ namespace RazorEnhancedScripts.Scripts
             Evasion,
             CounterAttack,
         };
+
+        private enum Button
+        {
+            MultiTarget = 1,
+            SingleTarget,
+            Confidence,
+            Evasion,
+            CounterAttack,
+            ConsecrateWeaponOn,
+            ConsecrateWeaponOff,
+            EnemyOfOneOn,
+            EnemyOfOneOff,
+        };
         
         private Mode _currentMode = Mode.Single;
         private Stance _currentStance = Stance.CounterAttack;
@@ -31,6 +44,9 @@ namespace RazorEnhancedScripts.Scripts
         private const string SpellNameBushidoCounterAttack = "Counter Attack";
         private const string SpellNameChivalryConsecrateWeapon = "Consecrate Weapon";
         private const string SpellNameChivalryEnemyOfOne = "Enemy Of One";
+
+        private const int IconEnemyOfOne = 0x5105;
+        private const int IconConsecrateWeapon = 0x5102;
         
         private const int RadiantScimitarItemId = 0x2D33;
 
@@ -53,11 +69,20 @@ namespace RazorEnhancedScripts.Scripts
                     switch (gd.buttonid)
                     {
                         case 0: return;
-                        case 1: Misc.SetSharedValue("ExtremeSampire:Mode","Multi"); break;
-                        case 2: Misc.SetSharedValue("ExtremeSampire:Mode","Single"); break;
-                        case 3: Misc.SetSharedValue("ExtremeSampire:Stance", SpellNameBushidoConfidence); break;
-                        case 4: Misc.SetSharedValue("ExtremeSampire:Stance", SpellNameBushidoEvasion); break;
-                        case 5: Misc.SetSharedValue("ExtremeSampire:Stance", SpellNameBushidoCounterAttack); break;
+                        case (int)Button.MultiTarget: Misc.SetSharedValue("ExtremeSampire:Mode","Multi"); break;
+                        case (int)Button.SingleTarget: Misc.SetSharedValue("ExtremeSampire:Mode","Single"); break;
+                        case (int)Button.Confidence: Misc.SetSharedValue("ExtremeSampire:Stance", SpellNameBushidoConfidence); break;
+                        case (int)Button.Evasion: Misc.SetSharedValue("ExtremeSampire:Stance", SpellNameBushidoEvasion); break;
+                        case (int)Button.CounterAttack: Misc.SetSharedValue("ExtremeSampire:Stance", SpellNameBushidoCounterAttack); break;
+                        case (int)Button.ConsecrateWeaponOn: Misc.SetSharedValue("ExtremeSampire:ConsecrateWeapon", "on"); break;
+                        case (int)Button.ConsecrateWeaponOff: Misc.SetSharedValue("ExtremeSampire:ConsecrateWeapon", "off"); break;
+                        case (int)Button.EnemyOfOneOn: Misc.SetSharedValue("ExtremeSampire:EnemyOfOne", "on"); break;
+                        case (int)Button.EnemyOfOneOff: Misc.SetSharedValue("ExtremeSampire:EnemyOfOne", "off"); break;
+                    }
+
+                    if (gd.buttonid > 0)
+                    {
+                        UpdateGump();
                     }
 
                     var oldMode = _currentMode;
@@ -75,15 +100,14 @@ namespace RazorEnhancedScripts.Scripts
                     {
                         MaintainStance();
                         if (IsPlayerPaladin()) MaintainConsecrateWeapon();
+                        if (IsPlayerPaladin()) MaintainEnemyOfOne();
 
                         if (_currentMode == Mode.Multi)
                         {
-                            DisableEnemyOfOne();
                             ExecuteMultiTargetRotation();
                         }
                         else
                         {
-                            if (IsPlayerPaladin()) MaintainEnemyOfOne();
                             ExecuteSingleTargetRotation();
                         }
                     }
@@ -169,6 +193,7 @@ namespace RazorEnhancedScripts.Scripts
 
         private void MaintainConsecrateWeapon()
         {
+            if (!IsConsecrateWeaponEnabled()) return;
             if (Player.Buffs.Contains(SpellNameChivalryConsecrateWeapon)) return;
             if (Player.Mana < SpellManaChivalryConsecrateWeapon) return;
             
@@ -187,6 +212,11 @@ namespace RazorEnhancedScripts.Scripts
         
         private void MaintainEnemyOfOne()
         {
+            if (!IsEnemyOfOneEnabled())
+            {
+                DisableEnemyOfOne();
+                return;
+            }
             if (Player.Buffs.Contains(SpellNameChivalryEnemyOfOne)) return;
             if (Player.Mana < SpellManaChivalryEnemyOfOne) return;
             
@@ -242,6 +272,27 @@ namespace RazorEnhancedScripts.Scripts
 
             return false;
         }
+
+        private bool IsConsecrateWeaponEnabled()
+        {
+            var val = Misc.ReadSharedValue("ExtremeSampire:ConsecrateWeapon");
+            switch (val)
+            {
+                case "on": return true;
+                case "off": return false;
+                default: return true;
+            }
+        }
+        
+        private bool IsEnemyOfOneEnabled()
+        {
+            var val = Misc.ReadSharedValue("ExtremeSampire:EnemyOfOne");
+            switch (val)
+            {
+                case "on": return true;
+                default: return false;
+            }
+        }
         
         private Stance GetBushidoStance()
         {
@@ -283,16 +334,18 @@ namespace RazorEnhancedScripts.Scripts
             var gump = Gumps.CreateGump();
             gump.gumpId = GumpID;
             gump.serial = (uint)Player.Serial;
-            Gumps.AddBackground(ref gump,0,0,105,55,1755);
+            
+            var gumpWidth = IsPlayerPaladin() ? 205 : 105;
+            Gumps.AddBackground(ref gump,0,0,gumpWidth,55,1755);
 
             if (_currentMode != Mode.Multi)
             {
-                Gumps.AddButton(ref gump, 5,5, GetSingleTargetIcon(), GetSingleTargetIcon(),1,1,0);
+                Gumps.AddButton(ref gump, 5,5, GetSingleTargetIcon(), GetSingleTargetIcon(),(int)Button.SingleTarget,1,0);
                 Gumps.AddTooltip(ref gump, "Single Target");
             }
             else
             {
-                Gumps.AddButton(ref gump, 5,5,GetMultiTargetIcon(),GetMultiTargetIcon(),2,1,0);
+                Gumps.AddButton(ref gump, 5,5,GetMultiTargetIcon(),GetMultiTargetIcon(),(int)Button.MultiTarget,1,0);
                 Gumps.AddTooltip(ref gump, "Multi Target");
             }
 
@@ -300,21 +353,42 @@ namespace RazorEnhancedScripts.Scripts
             {
                 case Stance.Confidence:
                 {
-                    Gumps.AddButton(ref gump, 55,5,21537,21537,3,1,0);
+                    Gumps.AddButton(ref gump, 55,5,21537,21537,(int)Button.Confidence,1,0);
                     Gumps.AddTooltip(ref gump, "Confidence");
                     break;
                 }
                 case Stance.Evasion:
                 {
-                    Gumps.AddButton(ref gump, 55,5,21538,21538,4,1,0);
+                    Gumps.AddButton(ref gump, 55,5,21538,21538,(int)Button.Evasion,1,0);
                     Gumps.AddTooltip(ref gump, "Evasion");
                     break;
                 }
                 case Stance.CounterAttack:
                 {
-                    Gumps.AddButton(ref gump, 55,5,21539,21539,5,1,0);
+                    Gumps.AddButton(ref gump, 55,5,21539,21539,(int)Button.CounterAttack,1,0);
                     Gumps.AddTooltip(ref gump, "Counter Attack");
                     break;
+                }
+            }
+
+            if (IsPlayerPaladin())
+            {
+                // Consecrate Weapon
+                var consecrateButtonId = IsConsecrateWeaponEnabled() ? Button.ConsecrateWeaponOff : Button.ConsecrateWeaponOn;
+                Gumps.AddButton(ref gump, 105, 5, IconConsecrateWeapon, IconConsecrateWeapon, (int)consecrateButtonId, 1, 0);
+                Gumps.AddTooltip(ref gump, "Consecrate Weapon");
+                if (!IsConsecrateWeaponEnabled())
+                {
+                    Gumps.AddImage(ref gump, 115, 30, 1150);
+                }
+                
+                // Enemy Of One
+                var enemyOfOneButtonId = IsEnemyOfOneEnabled() ? Button.EnemyOfOneOff : Button.EnemyOfOneOn;
+                Gumps.AddButton(ref gump, 155, 5, IconEnemyOfOne, IconEnemyOfOne, (int)enemyOfOneButtonId, 1, 0);
+                Gumps.AddTooltip(ref gump, "Enemy of One");
+                if (!IsEnemyOfOneEnabled())
+                {
+                    Gumps.AddImage(ref gump, 165, 30, 1150);
                 }
             }
 

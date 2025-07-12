@@ -3,8 +3,8 @@
  * Extreme Dungeon Chests
  * ================================================
  *
- * Version: 1.1.0
- * Last Updated: 2025-07-10
+ * Version: 1.1.1
+ * Last Updated: 2025-07-12
  * Author: nkr
  *
  * ------------------------------------------------
@@ -23,6 +23,10 @@
  * ------------------------------------------------
  * Changelog:
  *
+ * [1.1.1] - 2025-07-12
+ *   - Added Kotl City Ruins as a location for chests
+ *   - Fixed handling of regal chests
+ *   - Fixed bug related to leaving and re-joining dungeons
  * [1.1.0] - 2025-07-10
  *   - Fixed bug where gump stayed open after closing it
  *   - Added Regal Chests
@@ -80,6 +84,7 @@ namespace RazorEnhancedScripts.Scripts
         private Item _currentChest = null;
         private int _currentChestInitialColor = 0;
         private readonly Journal _journal = new Journal();
+        private bool wasInDungeonOrGhost = false;
         
         public void Run()
         {
@@ -151,12 +156,27 @@ namespace RazorEnhancedScripts.Scripts
             }
         }
 
+        private bool IsLockedContainer(Item container)
+        {
+            return (container.IsContainer &&
+                    container.Properties.Count == 1) ||
+                   ((container.ItemID == 0x4D0C || container.ItemID == 0x4D0D) &&
+                    container.Properties.Count == 2);
+        }
+
         private void HandleSearching()
         {
             if (Player.IsGhost || !IsPlayerInDungeon())
             {
+                wasInDungeonOrGhost = true;
                 UpdateGump();
                 return;
+            }
+
+            if (wasInDungeonOrGhost)
+            {
+                wasInDungeonOrGhost = false;
+                UpdateGump();
             }
             
             var itemsFilter = new Items.Filter
@@ -169,7 +189,7 @@ namespace RazorEnhancedScripts.Scripts
             };
             var items = Items.ApplyFilter(itemsFilter);
 
-            foreach (var chest in items.Where(item => DungeonChestItemIds.Contains(item.ItemID) && item.Properties.Count == 1))
+            foreach (var chest in items.Where(item => DungeonChestItemIds.Contains(item.ItemID) && IsLockedContainer(item)))
             {
                 if (Player.DistanceTo(chest) > 1)
                 {
@@ -290,7 +310,14 @@ namespace RazorEnhancedScripts.Scripts
 
         private bool IsPlayerInDungeon()
         {
-            return string.Equals(Player.Zone(), "dungeons", StringComparison.InvariantCultureIgnoreCase);
+            return IsPlayerInKotlCityRuins() || string.Equals(Player.Zone(), "dungeons", StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        private bool IsPlayerInKotlCityRuins()
+        {
+            return Player.Map == 5 &&
+                   Player.Position.X > 433 && Player.Position.X < 676 &&
+                   Player.Position.Y > 2270 && Player.Position.Y < 2500;
         }
 
         private void UpdateGump()
