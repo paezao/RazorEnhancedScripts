@@ -99,8 +99,8 @@ namespace RazorEnhancedScripts.Scripts
                     if (Player.WarMode)
                     {
                         MaintainStance();
-                        if (IsPlayerPaladin()) MaintainConsecrateWeapon();
                         if (IsPlayerPaladin()) MaintainEnemyOfOne();
+                        if (IsPlayerPaladin()) MaintainConsecrateWeapon();
 
                         if (_currentMode == Mode.Multi)
                         {
@@ -226,6 +226,21 @@ namespace RazorEnhancedScripts.Scripts
 
         private void ExecuteMultiTargetRotation()
         {
+            var onslaughtActive = (DateTime.Now - _lastOnslaughtTime).TotalMilliseconds < OnslaughtDurationMs;
+
+            if (!onslaughtActive)
+            {
+                Spells.CastMastery(SpellNameMasteryOnslaught);
+                Misc.Pause(100);
+
+                if (WaitForOnslaughtHit())
+                {
+                    Player.HeadMessage(0x90, "Onslaught");
+                    _lastOnslaughtTime = DateTime.Now;
+                }
+                return;
+            }
+            
             if (!Player.HasSpecial)
             {
                 ReadyMultiTargetAbility();
