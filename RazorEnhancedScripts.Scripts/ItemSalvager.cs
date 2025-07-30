@@ -16,7 +16,7 @@ namespace RazorEnhancedScripts.Scripts
         private readonly Target _target = new Target();
         private Item _salvageBag = null;
 
-        private const string ItemName = "Studded Sleeves";
+        private const string ItemName = "Studded Leggings";
 
         private static readonly List<ItemRule> Rules = new List<ItemRule>
         {

@@ -39,6 +39,9 @@
         <Reference Include="System.Xml"/>
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="ExtremeArcher.cs" />
+        <Compile Include="ExtremeArcherToggleMode.cs" />
+        <Compile Include="ExtremeBard.cs" />
         <Compile Include="ExtremeBlaster.cs" />
         <Compile Include="ExtremeBODCollecting.cs" />
         <Compile Include="ExtremeBODFilling.cs" />

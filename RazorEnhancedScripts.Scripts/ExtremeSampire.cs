@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using RazorEnhanced;
 
@@ -33,6 +31,8 @@ namespace RazorEnhancedScripts.Scripts
             ConsecrateWeaponOff,
             EnemyOfOneOn,
             EnemyOfOneOff,
+            AutoAttackOn,
+            AutoAttackOff,
         };
         
         private Mode _currentMode = Mode.Single;
@@ -46,6 +46,7 @@ namespace RazorEnhancedScripts.Scripts
         private const string SpellNameChivalryEnemyOfOne = "Enemy Of One";
 
         private const int IconEnemyOfOne = 0x5105;
+        private const int IconAutoAttack = 0x5105;
         private const int IconConsecrateWeapon = 0x5102;
         
         private const int RadiantScimitarItemId = 0x2D33;
@@ -78,6 +79,8 @@ namespace RazorEnhancedScripts.Scripts
                         case (int)Button.ConsecrateWeaponOff: Misc.SetSharedValue("ExtremeSampire:ConsecrateWeapon", "off"); break;
                         case (int)Button.EnemyOfOneOn: Misc.SetSharedValue("ExtremeSampire:EnemyOfOne", "on"); break;
                         case (int)Button.EnemyOfOneOff: Misc.SetSharedValue("ExtremeSampire:EnemyOfOne", "off"); break;
+                        case (int)Button.AutoAttackOn: Misc.SetSharedValue("ExtremeSampire:AutoAttack", "on"); break;
+                        case (int)Button.AutoAttackOff: Misc.SetSharedValue("ExtremeSampire:AutoAttack", "off"); break;
                     }
 
                     if (gd.buttonid > 0)
@@ -110,6 +113,8 @@ namespace RazorEnhancedScripts.Scripts
                         {
                             ExecuteSingleTargetRotation();
                         }
+
+                        if (IsAutoAttackEnabled()) AttackNearest();
                     }
 
                     Misc.Pause(500);
@@ -121,6 +126,20 @@ namespace RazorEnhancedScripts.Scripts
                 {
                     Misc.SendMessage(e.ToString());
                 }
+            }
+        }
+
+        private void AttackNearest()
+        {
+            var filter = new Mobiles.Filter();
+            filter.Notorieties.Add(6);
+            filter.CheckLineOfSight = true;
+            filter.RangeMax = 5;
+            filter.IgnorePets = true;
+            var mobiles = Mobiles.ApplyFilter(filter);
+            if (mobiles.Count > 0)
+            {
+                Player.Attack(Mobiles.Select(mobiles, "Nearest"));
             }
         }
 
@@ -226,21 +245,6 @@ namespace RazorEnhancedScripts.Scripts
 
         private void ExecuteMultiTargetRotation()
         {
-            var onslaughtActive = (DateTime.Now - _lastOnslaughtTime).TotalMilliseconds < OnslaughtDurationMs;
-
-            if (!onslaughtActive)
-            {
-                Spells.CastMastery(SpellNameMasteryOnslaught);
-                Misc.Pause(100);
-
-                if (WaitForOnslaughtHit())
-                {
-                    Player.HeadMessage(0x90, "Onslaught");
-                    _lastOnslaughtTime = DateTime.Now;
-                }
-                return;
-            }
-            
             if (!Player.HasSpecial)
             {
                 ReadyMultiTargetAbility();
@@ -309,6 +313,16 @@ namespace RazorEnhancedScripts.Scripts
             }
         }
         
+        private bool IsAutoAttackEnabled()
+        {
+            var val = Misc.ReadSharedValue("ExtremeSampire:AutoAttack");
+            switch (val)
+            {
+                case "on": return true;
+                default: return false;
+            }
+        }
+        
         private Stance GetBushidoStance()
         {
             var val = Misc.ReadSharedValue("ExtremeSampire:Stance");
@@ -350,37 +364,52 @@ namespace RazorEnhancedScripts.Scripts
             gump.gumpId = GumpID;
             gump.serial = (uint)Player.Serial;
             
-            var gumpWidth = IsPlayerPaladin() ? 205 : 105;
+            var gumpWidth = IsPlayerPaladin() ? 255 : 155;
             Gumps.AddBackground(ref gump,0,0,gumpWidth,55,1755);
+
+            var xCursor = 5;
 
             if (_currentMode != Mode.Multi)
             {
-                Gumps.AddButton(ref gump, 5,5, GetSingleTargetIcon(), GetSingleTargetIcon(),(int)Button.SingleTarget,1,0);
+                Gumps.AddButton(ref gump, xCursor,5, GetSingleTargetIcon(), GetSingleTargetIcon(),(int)Button.SingleTarget,1,0);
                 Gumps.AddTooltip(ref gump, "Single Target");
             }
             else
             {
-                Gumps.AddButton(ref gump, 5,5,GetMultiTargetIcon(),GetMultiTargetIcon(),(int)Button.MultiTarget,1,0);
+                Gumps.AddButton(ref gump, xCursor,5,GetMultiTargetIcon(),GetMultiTargetIcon(),(int)Button.MultiTarget,1,0);
                 Gumps.AddTooltip(ref gump, "Multi Target");
             }
+
+            xCursor += 50;
+            
+            // Auto Attack
+            var autoAttackButtonId = IsAutoAttackEnabled() ? Button.AutoAttackOff : Button.AutoAttackOn;
+            Gumps.AddButton(ref gump, xCursor, 5, IconAutoAttack, IconAutoAttack, (int)autoAttackButtonId, 1, 0);
+            Gumps.AddTooltip(ref gump, "Auto Attack");
+            if (!IsAutoAttackEnabled())
+            {
+                Gumps.AddImage(ref gump, xCursor + 10, 30, 1150);
+            }
+
+            xCursor += 50;
 
             switch (_currentStance)
             {
                 case Stance.Confidence:
                 {
-                    Gumps.AddButton(ref gump, 55,5,21537,21537,(int)Button.Confidence,1,0);
+                    Gumps.AddButton(ref gump, xCursor,5,21537,21537,(int)Button.Confidence,1,0);
                     Gumps.AddTooltip(ref gump, "Confidence");
                     break;
                 }
                 case Stance.Evasion:
                 {
-                    Gumps.AddButton(ref gump, 55,5,21538,21538,(int)Button.Evasion,1,0);
+                    Gumps.AddButton(ref gump, xCursor,5,21538,21538,(int)Button.Evasion,1,0);
                     Gumps.AddTooltip(ref gump, "Evasion");
                     break;
                 }
                 case Stance.CounterAttack:
                 {
-                    Gumps.AddButton(ref gump, 55,5,21539,21539,(int)Button.CounterAttack,1,0);
+                    Gumps.AddButton(ref gump, xCursor,5,21539,21539,(int)Button.CounterAttack,1,0);
                     Gumps.AddTooltip(ref gump, "Counter Attack");
                     break;
                 }
@@ -388,22 +417,24 @@ namespace RazorEnhancedScripts.Scripts
 
             if (IsPlayerPaladin())
             {
+                xCursor += 50;
                 // Consecrate Weapon
                 var consecrateButtonId = IsConsecrateWeaponEnabled() ? Button.ConsecrateWeaponOff : Button.ConsecrateWeaponOn;
-                Gumps.AddButton(ref gump, 105, 5, IconConsecrateWeapon, IconConsecrateWeapon, (int)consecrateButtonId, 1, 0);
+                Gumps.AddButton(ref gump, xCursor, 5, IconConsecrateWeapon, IconConsecrateWeapon, (int)consecrateButtonId, 1, 0);
                 Gumps.AddTooltip(ref gump, "Consecrate Weapon");
                 if (!IsConsecrateWeaponEnabled())
                 {
-                    Gumps.AddImage(ref gump, 115, 30, 1150);
+                    Gumps.AddImage(ref gump, xCursor + 10, 30, 1150);
                 }
                 
+                xCursor += 50;
                 // Enemy Of One
                 var enemyOfOneButtonId = IsEnemyOfOneEnabled() ? Button.EnemyOfOneOff : Button.EnemyOfOneOn;
-                Gumps.AddButton(ref gump, 155, 5, IconEnemyOfOne, IconEnemyOfOne, (int)enemyOfOneButtonId, 1, 0);
+                Gumps.AddButton(ref gump, xCursor, 5, IconEnemyOfOne, IconEnemyOfOne, (int)enemyOfOneButtonId, 1, 0);
                 Gumps.AddTooltip(ref gump, "Enemy of One");
                 if (!IsEnemyOfOneEnabled())
                 {
-                    Gumps.AddImage(ref gump, 165, 30, 1150);
+                    Gumps.AddImage(ref gump, xCursor + 10, 30, 1150);
                 }
             }
 
